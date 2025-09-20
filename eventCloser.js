@@ -7,8 +7,6 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 const logger = require('./logger');
 
-const { bot } = require('./bot'); // Import the Telegram bot instance
-
 const gameInfo = {
     'Color Memory': {
         name: "Color Memory",
