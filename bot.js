@@ -101,7 +101,6 @@ function startListening() {
             await bot.sendMessage(userId, welcomeText, options);
 
         } else if (callbackData === 'close'){
-            selectedGame = callbackData;
             userStates[userId] = null; // تنظیم حالت کاربر
             logger.info(`User ${userId} is closing the game: ${selectedGame}.`);
 
