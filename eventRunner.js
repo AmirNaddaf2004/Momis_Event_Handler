@@ -65,7 +65,7 @@ async function storeEvent(selectedGame, eventId) {
         await saveData(data);
 
         // Execute the pm2 restart command after the data is successfully saved
-        exec('pm2 restart Momis_Event_Handler', (error, stdout, stderr) => {
+        exec('pm2 restart 13', (error, stdout, stderr) => {
             if (error) {
                 logger.error(`exec error: ${error.message}`);
                 return;
