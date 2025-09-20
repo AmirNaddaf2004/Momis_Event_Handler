@@ -132,9 +132,24 @@ function startListening() {
         for (const [gameKey, gameValue] of Object.entries(GAME_INFO)) {
             try {
                 const fileContent = await fs.readFile(gameValue.envPath, 'utf8');
-                const match = fileContent.match(/ONTON_EVENT_UUID="([^"]+)"/);
-                if (match) {
-                    status += `✅ *${gameKey}*: Active (ID: \`${match[1]}\`)\n`;
+
+                // Find the active event UUID, ignoring commented lines
+                const lines = fileContent.split('\n');
+                let activeEventId = null;
+
+                for (const line of lines) {
+                    const trimmedLine = line.trim();
+                    if (!trimmedLine.startsWith('#')) {
+                        const match = trimmedLine.match(/ONTON_EVENT_UUID="([^"]+)"/);
+                        if (match && match[1]) {
+                            activeEventId = match[1];
+                            break; // Found the active ID, no need to check further
+                        }
+                    }
+                }
+                
+                if (activeEventId) {
+                    status += `✅ *${gameKey}*: Active (ID: \`${activeEventId}\`)\n`;
                 } else {
                     status += `❌ *${gameKey}*: Inactive\n`;
                 }
