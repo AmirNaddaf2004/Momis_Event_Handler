@@ -70,7 +70,7 @@ async function processEvent(selectedGame) {
 
         // Step 3: Comment out the ONTON_EVENT_UUID line
         const commentRegex = /^\s*ONTON_EVENT_UUID=.*$/m;
-        const newFileContent = fileContent.replace(commentRegex, `\n# ONTON_EVENT_UUID="${eventId}"`);
+        const newFileContent = fileContent.replace(commentRegex, `# ONTON_EVENT_UUID="${eventId}"`);
         await fs.writeFile(envPath, newFileContent, 'utf8');
         logger.info(`Successfully commented out ONTON_EVENT_UUID in ${envPath}.`);
 
