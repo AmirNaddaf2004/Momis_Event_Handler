@@ -36,88 +36,105 @@ async function isUserAdmin(userId) {
 
 // --- Main Bot Logic ---
 function startListening() {
-    // ---- هندلر برای دستور /start ----
-    bot.onText(/^\/start$/, async (msg) => {
+    // ---- هندلر برای دستور /start ----
+    bot.onText(/^\/start$/, async (msg) => {
+        const userId = msg.from.id;
+        const firstName = msg.from.first_name;
+
+        try {
+            const isAdmin = await isUserAdmin(userId);
+
+            if (!isAdmin) {
+                return await bot.sendMessage(userId, 
+                    `❌ Hello, *${firstName}*! This bot is restricted to administrators of the **MOMIS_studio** channel.`, 
+                    { parse_mode: 'Markdown' }
+                );
+            }
+            
+            const welcomeText = `🎉 Welcome, *${firstName}*! Please choose a game from the options below:`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎲 2048", callback_data: '2048' }],
+                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
+                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, welcomeText, options);
+
+        } catch (error) {
+            logger.error(`Error in /start handler: ${error.message}`);
+            await bot.sendMessage(userId, '❌ An error occurred. Please try again later.');
+        }
+    });
+
+    // ---- هندلر برای مدیریت کلیک روی دکمه‌ها ----
+    bot.on('callback_query', async (callbackQuery) => {
+        const userId = callbackQuery.from.id;
+        const callbackData = callbackQuery.data;
+
+        await bot.answerCallbackQuery(callbackQuery.id);
+
+        if (callbackData === 'back') {
+            selectedGame = null;
+            userStates[userId] = null; // پاک کردن حالت کاربر
+            logger.info(`User ${userId} went back to the main menu. selectedGame is now null.`);
+            
+            const welcomeText = `🎉 Welcome back! Please choose a game from the options below:`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎲 2048", callback_data: '2048' }],
+                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
+                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, welcomeText, options);
+
+        } else {
+            selectedGame = callbackData;
+            userStates[userId] = 'waiting_for_eventId'; // تنظیم حالت کاربر
+            logger.info(`User ${userId} selected the game: ${selectedGame}. Waiting for eventId.`);
+
+            const message = `✅ You have selected **${selectedGame}**!\nSend the Event Id`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "◀️ Back", callback_data: 'back' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, message, options);
+        }
+    });
+
+    // ---- هندلر جدید برای دریافت Event Id ----
+    bot.onText(/(.*)/, async (msg) => {
         const userId = msg.from.id;
-        const firstName = msg.from.first_name;
+        const text = msg.text;
 
-        try {
-            const isAdmin = await isUserAdmin(userId);
+        // اگر کاربر در حالتی است که باید eventId ارسال کند
+        if (userStates[userId] === 'waiting_for_eventId') {
+            const eventId = text; // ذخیره پیام کاربر در متغیر eventId
+            logger.info(`User ${userId} sent Event Id: ${eventId}`);
 
-            if (!isAdmin) {
-                // If the user is not an admin, send a restricted access message
-                return await bot.sendMessage(userId, 
-                    `❌ Hello, *${firstName}*! This bot is restricted to administrators of the **MOMIS_studio** channel.`, 
-                    { parse_mode: 'Markdown' }
-                );
-            }
-            
-            // If the user is an admin, send the game menu with callback buttons
-            const welcomeText = `🎉 Welcome, *${firstName}*! Please choose a game from the options below:`;
-            const options = {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "🎲 2048", callback_data: '2048' }],
-                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
-                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
-                    ]
-                }
-            };
-            await bot.sendMessage(userId, welcomeText, options);
+            // پاک کردن حالت کاربر برای جلوگیری از لوپ
+            delete userStates[userId];
 
-        } catch (error) {
-            logger.error(`Error in /start handler: ${error.message}`);
-            await bot.sendMessage(userId, '❌ An error occurred. Please try again later.');
+            // در اینجا می توانید از eventId و selectedGame برای انجام کارهای بعدی استفاده کنید
+            await bot.sendMessage(userId, `Thank you! The Event Id has been saved as: **${eventId}**`, { parse_mode: 'Markdown' });
+            // حالا میتوانید بقیه منطق برنامه را بر اساس eventId و selectedGame اجرا کنید
         }
     });
 
-    // ---- هندلر برای مدیریت کلیک روی دکمه‌ها ----
-    bot.on('callback_query', async (callbackQuery) => {
-        const userId = callbackQuery.from.id;
-        const callbackData = callbackQuery.data;
-
-        await bot.answerCallbackQuery(callbackQuery.id);
-
-        if (callbackData === 'back') {
-            // اگر دکمه برگشت فشار داده شد
-            selectedGame = null; // متغیر را به حالت اولیه برگردان
-            logger.info(`User ${userId} went back to the main menu. selectedGame is now null.`);
-            
-            const welcomeText = `🎉 Welcome back! Please choose a game from the options below:`;
-            const options = {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "🎲 2048", callback_data: '2048' }],
-                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
-                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
-                    ]
-                }
-            };
-            await bot.sendMessage(userId, welcomeText, options);
-
-        } else {
-            // اگر یک بازی انتخاب شد
-            selectedGame = callbackData; // مقدار بازی انتخاب شده را ذخیره کن
-            logger.info(`User ${userId} selected the game: ${selectedGame}`);
-
-            const message = `✅ You have selected **${selectedGame}**!`;
-            const options = {
-                parse_mode: "Markdown",
-                reply_markup: {
-                    inline_keyboard: [
-                        [{ text: "◀️ Back", callback_data: 'back' }]
-                    ]
-                }
-            };
-            await bot.sendMessage(userId, message, options);
-        }
-    });
-
-    // --- Start Polling and Error Handling ---
-    bot.on("polling_error", (error) => logger.error(`Telegram Polling Error: ${error.message}`));
-    logger.info("Telegram Bot initialized and is now listening for commands...");
+    // --- Start Polling and Error Handling ---
+    bot.on("polling_error", (error) => logger.error(`Telegram Polling Error: ${error.message}`));
+    logger.info("Telegram Bot initialized and is now listening for commands...");
 }
 
 startListening();
