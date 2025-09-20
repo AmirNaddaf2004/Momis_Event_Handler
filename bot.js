@@ -8,6 +8,8 @@ if (!token) {
     throw new Error('Telegram BOT_TOKEN is not configured in .env file.');
 }
 
+logger.info(`the token is ${token}`);
+
 // خواندن متغیرها از فایل تنظیمات
 const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
 
