@@ -15,6 +15,8 @@ const bot = new TelegramBot(token, { polling: true });
 
 let selectedGame = null;
 
+// دیکشنری برای ذخیره حالت هر کاربر
+let userStates = {};
 
 // --- Channel Membership Check ---
 /**
