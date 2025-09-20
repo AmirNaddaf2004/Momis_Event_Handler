@@ -87,7 +87,7 @@ async function scheduleEvent(userId, game, startDateTimeUTC, duration, eventId) 
     // Schedule processEvent
     schedule.scheduleJob(endTime, async () => {
         logger.info(`[Scheduler] Closing event for ${game} at ${endTime.toISOString()} UTC`);
-        await processEvent(game);
+        await processEvent(bot, game);
         await bot.sendMessage(userId, `🏁 **Event Ended!**\n\n*Game:* ${game}\n*Event ID:* \`${eventId}\``, { parse_mode: 'Markdown' });
     });
 
@@ -173,7 +173,7 @@ function startListening() {
         } else if (callbackData.startsWith('close_event_')) {
             const gameToClose = callbackData.substring(12);
             logger.info(`User ${userId} requested to close event for game: ${gameToClose}.`);
-            await processEvent(gameToClose);
+            await processEvent(bot, gameToClose);
             await bot.sendMessage(userId, `✅ You have closed **${gameToClose}**!`, { parse_mode: 'Markdown' });
             userStates[userId] = {};
             await bot.sendMessage(userId, await getStatusMessage(), { parse_mode: 'Markdown' });
