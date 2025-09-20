@@ -44,7 +44,7 @@ async function storeEvent(selectedGame, eventId) {
         // Replace the entire line with the new eventId
         const newFileContent = fileContent.replace(
             uuidPattern,
-            `ONTON_EVENT_UUID="${eventId}"`
+            `\nONTON_EVENT_UUID="${eventId}"`
         );
 
         // Write the updated content back to the .env file
