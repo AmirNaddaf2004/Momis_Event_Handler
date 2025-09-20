@@ -13,7 +13,7 @@ const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
 
 const bot = new TelegramBot(token);
 
-// --- Channel Membership Check (Simplified) ---
+// --- Channel Membership Check ---
 /**
  * Checks if the user is an administrator of the specified channel.
  * @param {number} userId - The user's Telegram ID.
@@ -31,6 +31,7 @@ async function isUserAdmin(userId) {
     }
 }
 
+// --- Main Bot Logic ---
 function startListening() {
     // ---- هندلر برای دستور /start ----
     bot.onText(/^\/start$/, async (msg) => {
@@ -41,12 +42,14 @@ function startListening() {
             const isAdmin = await isUserAdmin(userId);
 
             if (!isAdmin) {
+                // If the user is not an admin, send a restricted access message
                 return await bot.sendMessage(userId, 
                     `❌ Hello, *${firstName}*! This bot is restricted to administrators of the **MOMIS_studio** channel.`, 
                     { parse_mode: 'Markdown' }
                 );
             }
             
+            // If the user is an admin, send the game menu with callback buttons
             const welcomeText = `🎉 Welcome, *${firstName}*! Please choose a game from the options below:`;
             const options = {
                 parse_mode: "Markdown",
@@ -69,19 +72,17 @@ function startListening() {
     // ---- هندلر برای مدیریت کلیک روی دکمه‌ها ----
     bot.on('callback_query', async (callbackQuery) => {
         const userId = callbackQuery.from.id;
-        const selectedGame = callbackQuery.data; // مقدار callback_data در اینجا ذخیره می‌شود
+        const selectedGame = callbackQuery.data;
 
-        // پاسخ به کلیک کاربر برای جلوگیری از نمایش "در حال بارگذاری"
         await bot.answerCallbackQuery(callbackQuery.id);
 
         logger.info(`User ${userId} selected the game: ${selectedGame}`);
 
-        // در اینجا می‌توانید منطق مربوط به هر بازی را اجرا کنید.
-        // برای مثال، ارسال یک پیام تأیید:
         const message = `✅ You have selected **${selectedGame}**!`;
         await bot.sendMessage(userId, message, { parse_mode: "Markdown" });
     });
 
+    // --- Start Polling ---
     bot.startPolling();
     bot.on("polling_error", (error) => logger.error(`Telegram Polling Error: ${error.message}`));
     logger.info("Telegram Bot initialized and is now listening for commands...");
