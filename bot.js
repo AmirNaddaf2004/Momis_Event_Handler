@@ -9,12 +9,9 @@ if (!token) {
 }
 
 // خواندن متغیرها از فایل تنظیمات
-const REQUIRED_CHANNEL_ID = process.env.BOT_TOKEN || '@MOMIS_studio';
+const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
 
 const bot = new TelegramBot(token, { polling: true });
-
-// متغیر سراسری برای ذخیره بازی انتخاب شده
-let selectedGame = null;
 
 // --- Channel Membership Check ---
 /**
