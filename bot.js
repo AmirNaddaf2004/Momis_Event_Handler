@@ -87,6 +87,8 @@ function startListening() {
     logger.info("Telegram Bot initialized and is now listening for commands...");
 }
 
+startListening();
+
 module.exports = {
     bot,
     isUserAdmin,
