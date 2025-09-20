@@ -13,6 +13,9 @@ const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
 
 const bot = new TelegramBot(token, { polling: true });
 
+let selectedGame = null;
+
+
 // --- Channel Membership Check ---
 /**
  * Checks if the user is an administrator of the specified channel.
