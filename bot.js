@@ -141,9 +141,19 @@ function startListening() {
 
             // پاک کردن حالت کاربر برای جلوگیری از لوپ
             delete userStates[userId];
-
-            // در اینجا می توانید از eventId و selectedGame برای انجام کارهای بعدی استفاده کنید
-            await bot.sendMessage(userId, `Thank you! The Event Id has been saved as: **${eventId}**`, { parse_mode: 'Markdown' });
+            selectedGame = null;
+            const message = `Thank you! The Event Id has been saved as: **${eventId}**! \nChoose another game if you want.`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎲 2048", callback_data: '2048' }],
+                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
+                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, message, options);
             // حالا میتوانید بقیه منطق برنامه را بر اساس eventId و selectedGame اجرا کنید
         }
     });
