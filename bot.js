@@ -51,7 +51,18 @@ async function getActiveGames() {
     for (const [key, value] of Object.entries(GAME_INFO)) {
         try {
             const fileContent = await fs.readFile(value.envPath, 'utf8');
-            if (fileContent.includes('ONTON_EVENT_UUID="')) {
+            
+            // Split the file content into lines
+            const lines = fileContent.split('\n');
+            
+            // Check each line for the non-commented variable
+            const isActive = lines.some(line => {
+                const trimmedLine = line.trim();
+                // Check if the line is not commented (#) and contains the variable
+                return !trimmedLine.startsWith('#') && trimmedLine.includes('ONTON_EVENT_UUID="');
+            });
+
+            if (isActive) {
                 activeGames.push(key);
             }
         } catch (error) {

@@ -15,21 +15,21 @@ const gameInfo = {
         dir: path.join(__dirname, '../../color_memory/backend'),
         envFile: path.join(__dirname, '../../color_memory/backend/.env'),
         restartCmd: 'pm2 restart 0',
-        rewardCmd: 'node reward_top_players.js'
+        rewardCmd: 'node reward-top-players.js'
     },
     '2048': {
         name: "2048",
         dir: path.join(__dirname, '../../my_2048/backend'),
         envFile: path.join(__dirname, '../../my_2048/backend/.env'),
         restartCmd: 'pm2 restart 10',
-        rewardCmd: 'node reward_top_players.js'
+        rewardCmd: 'node reward-top-players.js'
     },
     'Math Battle': {
         name: "Math Battle",
         dir: path.join(__dirname, '../../mini-app/backend'),
         envFile: path.join(__dirname, '../../mini-app/backend/.env'),
         restartCmd: 'pm2 restart 1',
-        rewardCmd: 'node reward_top_players.js'
+        rewardCmd: 'node reward-top-players.js'
     }
 };
 
