@@ -2,6 +2,8 @@
 require('dotenv').config({ quiet: true });
 const TelegramBot = require('node-telegram-bot-api');
 const logger = require('./logger');
+const { storeEvent } = require('./eventRunner'); 
+
 
 const token = process.env.BOT_TOKEN;
 if (!token) {
@@ -124,6 +126,8 @@ function startListening() {
         if (userStates[userId] === 'waiting_for_eventId') {
             const eventId = text; // ذخیره پیام کاربر در متغیر eventId
             logger.info(`User ${userId} sent Event Id: ${eventId}`);
+
+            await storeEvent(selectedGame, eventId);
 
             // پاک کردن حالت کاربر برای جلوگیری از لوپ
             delete userStates[userId];
