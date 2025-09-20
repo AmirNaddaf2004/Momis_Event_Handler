@@ -3,6 +3,7 @@ require('dotenv').config({ quiet: true });
 const TelegramBot = require('node-telegram-bot-api');
 const logger = require('./logger');
 const { storeEvent } = require('./eventRunner'); 
+const { processEvent } = require('./eventCloser'); 
 
 
 const token = process.env.BOT_TOKEN;
@@ -99,7 +100,16 @@ function startListening() {
             };
             await bot.sendMessage(userId, welcomeText, options);
 
-        } else {
+        } else if (callbackData === 'close'){
+            selectedGame = callbackData;
+            userStates[userId] = null; // تنظیم حالت کاربر
+            logger.info(`User ${userId} is closing the game: ${selectedGame}.`);
+
+            await processEvent(selectedGame);
+
+            const message = `✅ You have closed **${selectedGame}**!`;
+            await bot.sendMessage(userId, message);
+        }else {
             selectedGame = callbackData;
             userStates[userId] = 'waiting_for_eventId'; // تنظیم حالت کاربر
             logger.info(`User ${userId} selected the game: ${selectedGame}. Waiting for eventId.`);
@@ -109,6 +119,7 @@ function startListening() {
                 parse_mode: "Markdown",
                 reply_markup: {
                     inline_keyboard: [
+                        [{ text: "Close event", callback_data: 'close' }],
                         [{ text: "◀️ Back", callback_data: 'back' }]
                     ]
                 }
