@@ -9,9 +9,12 @@ if (!token) {
 }
 
 // خواندن متغیرها از فایل تنظیمات
-const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
+const REQUIRED_CHANNEL_ID = process.env.BOT_TOKEN || '@MOMIS_studio';
 
 const bot = new TelegramBot(token, { polling: true });
+
+// متغیر سراسری برای ذخیره بازی انتخاب شده
+let selectedGame = null;
 
 // --- Channel Membership Check ---
 /**
@@ -72,14 +75,44 @@ function startListening() {
     // ---- هندلر برای مدیریت کلیک روی دکمه‌ها ----
     bot.on('callback_query', async (callbackQuery) => {
         const userId = callbackQuery.from.id;
-        const selectedGame = callbackQuery.data;
+        const callbackData = callbackQuery.data;
 
         await bot.answerCallbackQuery(callbackQuery.id);
 
-        logger.info(`User ${userId} selected the game: ${selectedGame}`);
+        if (callbackData === 'back') {
+            // اگر دکمه برگشت فشار داده شد
+            selectedGame = null; // متغیر را به حالت اولیه برگردان
+            logger.info(`User ${userId} went back to the main menu. selectedGame is now null.`);
+            
+            const welcomeText = `🎉 Welcome back! Please choose a game from the options below:`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "🎲 2048", callback_data: '2048' }],
+                        [{ text: "🎨 Color Memory", callback_data: 'Color Memory' }],
+                        [{ text: "➕ Math Battle", callback_data: 'Math Battle' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, welcomeText, options);
 
-        const message = `✅ You have selected **${selectedGame}**!`;
-        await bot.sendMessage(userId, message, { parse_mode: "Markdown" });
+        } else {
+            // اگر یک بازی انتخاب شد
+            selectedGame = callbackData; // مقدار بازی انتخاب شده را ذخیره کن
+            logger.info(`User ${userId} selected the game: ${selectedGame}`);
+
+            const message = `✅ You have selected **${selectedGame}**!`;
+            const options = {
+                parse_mode: "Markdown",
+                reply_markup: {
+                    inline_keyboard: [
+                        [{ text: "◀️ Back", callback_data: 'back' }]
+                    ]
+                }
+            };
+            await bot.sendMessage(userId, message, options);
+        }
     });
 
     // --- Start Polling and Error Handling ---
