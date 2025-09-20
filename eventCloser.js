@@ -33,7 +33,7 @@ const gameInfo = {
     }
 };
 
-async function processEvent(gameKey) {
+async function processEvent(bot, gameKey) {
     const game = gameInfo[gameKey];
     if (!game) {
         logger.error(`Invalid game key: ${gameKey}`);
