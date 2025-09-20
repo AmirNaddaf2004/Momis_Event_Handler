@@ -2,47 +2,25 @@
 const fs = require('fs/promises');
 const path = require('path');
 const logger = require('./logger');
-const { exec } = require('child_process'); // This line is added here
+const { exec } = require('child_process');
 
-const DATA_FILE_PATH = path.join(__dirname, 'game_events.json');
+// Define a map of games to their respective .env file paths
+const GAME_ENV_PATHS = {
+    'Color Memory': path.join(__dirname, '../../color_memory/backend/.env'),
+    '2048': path.join(__dirname, '../../my_2048/backend/.env'),
+    'Math Battle': path.join(__dirname, '../../mini-app/backend/.env'),
+};
 
-/**
- * Loads the existing data from the file.
- * @returns {Promise<Object>} An object containing the data, or an empty object if the file doesn't exist.
- */
-async function loadData() {
-    try {
-        const data = await fs.readFile(DATA_FILE_PATH, 'utf8');
-        return JSON.parse(data);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            logger.info('Data file not found. Creating a new one.');
-            return {};
-        }
-        logger.error(`Error loading data file: ${error.message}`);
-        throw error;
-    }
-}
+const GAME_PROC_NUM = {
+    'Color Memory': '0',
+    '2048': '10',
+    'Math Battle': '1',
+};
 
 /**
- * Saves the updated data back to the file.
- * @param {Object} data The data object to be saved.
- */
-async function saveData(data) {
-    try {
-        const jsonData = JSON.stringify(data, null, 2);
-        await fs.writeFile(DATA_FILE_PATH, jsonData, 'utf8');
-        logger.info('Data saved successfully.');
-    } catch (error) {
-        logger.error(`Error saving data file: ${error.message}`);
-        throw error; // Propagate the error to the caller
-    }
-}
-
-/**
- * Stores the game and event ID in the data file and restarts PM2 process.
+ * Stores the event ID by updating the corresponding .env file and restarting the PM2 process.
  * @param {string} selectedGame The name of the selected game.
- * @param {string} eventId The ID of the event.
+ * @param {string} eventId The ID of the event to be written.
  */
 async function storeEvent(selectedGame, eventId) {
     if (!selectedGame || !eventId) {
@@ -50,22 +28,31 @@ async function storeEvent(selectedGame, eventId) {
         return;
     }
 
+    const filePath = GAME_ENV_PATHS[selectedGame];
+    if (!filePath) {
+        logger.error(`No file path defined for game: ${selectedGame}`);
+        return;
+    }
+
     try {
-        const data = await loadData();
-        
-        if (!data[selectedGame]) {
-            data[selectedGame] = [];
-        }
+        // Read the contents of the .env file
+        const fileContent = await fs.readFile(filePath, 'utf8');
 
-        data[selectedGame].push({
-            eventId: eventId,
-            timestamp: new Date().toISOString()
-        });
+        // The pattern to find the ONTON_EVENT_UUID line (with or without a leading #)
+        const uuidPattern = /(#?\s*ONTON_EVENT_UUID=).*/;
 
-        await saveData(data);
+        // Replace the entire line with the new eventId
+        const newFileContent = fileContent.replace(
+            uuidPattern,
+            `ONTON_EVENT_UUID="${eventId}"`
+        );
+
+        // Write the updated content back to the .env file
+        await fs.writeFile(filePath, newFileContent, 'utf8');
+        logger.info(`Successfully updated .env file for game '${selectedGame}' with Event ID '${eventId}'.`);
 
         // Execute the pm2 restart command after the data is successfully saved
-        exec('pm2 restart 13', (error, stdout, stderr) => {
+        exec('pm2 restart ' + GAME_PROC_NUM[selectedGame], (error, stdout, stderr) => {
             if (error) {
                 logger.error(`exec error: ${error.message}`);
                 return;
@@ -76,9 +63,9 @@ async function storeEvent(selectedGame, eventId) {
             }
         });
 
-        logger.info(`Successfully stored Event ID '${eventId}' for game '${selectedGame}' and initiated PM2 restart.`);
+        logger.info(`PM2 restart initiated for process ID ${selectedGame}.`);
     } catch (error) {
-        logger.error(`Failed to store event: ${error.message}`);
+        logger.error(`Failed to update .env file or restart PM2 process: ${error.message}`);
     }
 }
 
