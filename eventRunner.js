@@ -18,13 +18,14 @@ const GAME_PROC_NUM = {
 };
 
 /**
- * Stores the event ID by updating the corresponding .env file and restarting the PM2 process.
+ * Stores the event ID and end time by updating the corresponding .env file and restarting the PM2 process.
  * @param {string} selectedGame The name of the selected game.
  * @param {string} eventId The ID of the event to be written.
+ * @param {Date} endTime The Date object representing the event's end time.
  */
-async function storeEvent(selectedGame, eventId) {
-    if (!selectedGame || !eventId) {
-        logger.error('Cannot store event: selectedGame or eventId is missing.');
+async function storeEvent(selectedGame, eventId, endTime) {
+    if (!selectedGame || !eventId || !endTime) {
+        logger.error('Cannot store event: selectedGame, eventId, or endTime is missing.');
         return;
     }
 
@@ -38,18 +39,25 @@ async function storeEvent(selectedGame, eventId) {
         // Read the contents of the .env file
         const fileContent = await fs.readFile(filePath, 'utf8');
 
-        // The pattern to find the ONTON_EVENT_UUID line (with or without a leading #)
-        const uuidPattern = /(#?\s*ONTON_EVENT_UUID=).*/;
+        // Prepare the new lines to be written
+        const newUuidLine = `ONTON_EVENT_UUID="${eventId}"`;
+        const newEndTimeLine = `END_TIME="${endTime.toISOString()}"`; // Save the end time as an ISO string
 
-        // Replace the entire line with the new eventId
-        const newFileContent = fileContent.replace(
-            uuidPattern,
-            `\nONTON_EVENT_UUID="${eventId}"`
+        // Regular expression to find and replace both UUID and END_TIME lines
+        const combinedPattern = /(#?\s*ONTON_EVENT_UUID=.*)|(#?\s*END_TIME=.*)/g;
+
+        // Replace both lines in one go. If they don't exist, this does nothing.
+        const updatedFileContent = fileContent.replace(
+            combinedPattern,
+            ''
         );
 
+        // Append the new lines at the end of the file.
+        const newFileContent = `${updatedFileContent.trim()}\n\n${newUuidLine}\n${newEndTimeLine}\n`;
+        
         // Write the updated content back to the .env file
         await fs.writeFile(filePath, newFileContent, 'utf8');
-        logger.info(`Successfully updated .env file for game '${selectedGame}' with Event ID '${eventId}'.`);
+        logger.info(`Successfully updated .env file for game '${selectedGame}' with Event ID '${eventId}' and End Time '${endTime.toISOString()}'.`);
 
         // Execute the pm2 restart command after the data is successfully saved
         exec('pm2 restart ' + GAME_PROC_NUM[selectedGame], (error, stdout, stderr) => {

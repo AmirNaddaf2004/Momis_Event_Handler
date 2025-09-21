@@ -82,7 +82,7 @@ async function scheduleEvent(userId, game, startDateTimeUTC, duration, eventId) 
     // Schedule storeEvent and save the job reference
     const startJob = schedule.scheduleJob(startTime, async () => {
         logger.info(`[Scheduler] Starting event for ${game} at ${startTime.toISOString()} UTC`);
-        await storeEvent(game, eventId);
+        await storeEvent(game, eventId, endTime);
         await bot.sendMessage(userId, `✅ **Event Started!**\n\n*Game:* ${game}\n*Event ID:* \`${eventId}\``, { parse_mode: 'Markdown' });
     });
 
