@@ -266,7 +266,5 @@ startListening();
 module.exports = {
     bot,
     isUserAdmin,
-    sendWinnerMessage,
-    sendConsolationMessage,
     startListening,
 };
