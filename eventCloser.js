@@ -6,6 +6,9 @@ const fs = require('fs/promises');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const logger = require('./logger');
+const Buffer = require('buffer').Buffer;
+
+const MAX_MESSAGE_LENGTH = 4000; // Telegram limit for regular messages
 
 const gameInfo = {
     'Color Memory': {
@@ -51,22 +54,37 @@ async function processEvent(bot, gameKey) {
             await bot.sendMessage(process.env.ADMIN_GROUP_ID, `⚠️ **Event close skipped:** No active event found for **${game.name}** to close.`, { parse_mode: 'Markdown' });
             return;
         }
-
-        // Change the working directory to the game's backend folder
-        // This is a backup method, the main fix is using absolute path below
-        process.chdir(game.dir);
         
         // Construct the full, absolute command path for more reliability
         const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')}`;
         logger.info(`Executing reward script with command: ${fullRewardCmd}`);
         
-        // Execute the reward command and capture the output
-        const { stdout, stderr } = await execPromise(fullRewardCmd, { env: { ...process.env, ONTON_EVENT_UUID: eventId } });
+        // Execute the reward command in the game's directory
+        const { stdout, stderr } = await execPromise(fullRewardCmd, { 
+            env: { ...process.env, ONTON_EVENT_UUID: eventId },
+            cwd: game.dir
+        });
         
         logger.info(`Reward script for ${game.name} finished.`);
 
-        // Send the output to the Telegram group
-        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout.substring(0, 4000)}\n\`\`\``, { parse_mode: 'Markdown' });
+        // Check if stdout is too long to send as a single message
+        if (stdout.length > MAX_MESSAGE_LENGTH) {
+            // Send the long output as a text file
+            const fileBuffer = Buffer.from(stdout, 'utf8');
+            await bot.sendDocument(
+                process.env.ADMIN_GROUP_ID,
+                fileBuffer,
+                { caption: `🎉 **Complete Event Results for ${game.name}**\n\nDue to the length of the content, the results have been sent as a text file.`, parse_mode: 'Markdown' },
+                { filename: `event_results_${eventId}.txt` }
+            );
+        } else {
+            // Send the short output as a regular message
+            await bot.sendMessage(
+                process.env.ADMIN_GROUP_ID, 
+                `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout}\n\`\`\``, 
+                { parse_mode: 'Markdown' }
+            );
+        }
         
         // Reset the ONTON_EVENT_UUID and END_TIME in the .env file
         const newEnvContent = envContent.replace(
@@ -82,17 +100,11 @@ async function processEvent(bot, gameKey) {
         logger.info(`PM2 process for ${game.name} restarted successfully.`);
 
     } catch (error) {
-        logger.error(`Error processing event for ${game.name}: ${error.message}`);
-        
-        // Log the stderr from the failed command to get the real error reason
-        if (error.stderr) {
-            logger.error(`stderr from failed command: ${error.stderr}`);
-        }
+        logger.error(`Error processing event for ${game.name}:`, error);
 
         await bot.sendMessage(process.env.ADMIN_GROUP_ID, `❌ **Error Closing Event:**\n\nAn error occurred while closing the event for **${game.name}**. Please check the server logs.\n\n\`\`\`\n${error.message}\n\`\`\`\n\n**stderr:**\n\`\`\`\n${error.stderr ? error.stderr.substring(0, 1000) : 'No stderr available'}\n\`\`\``, { parse_mode: 'Markdown' });
         
     } finally {
-        // Always return to the original directory, even if an error occurred
         process.chdir(originalDir);
         logger.info(`Returned to original directory: ${originalDir}`);
     }
