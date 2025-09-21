@@ -6,9 +6,6 @@ const fs = require('fs/promises');
 const util = require('util');
 const execPromise = util.promisify(exec);
 const logger = require('./logger');
-const Buffer = require('buffer').Buffer;
-
-const MAX_MESSAGE_LENGTH = 4000; // Telegram limit for regular messages
 
 const gameInfo = {
     'Color Memory': {
@@ -55,37 +52,19 @@ async function processEvent(bot, gameKey) {
             return;
         }
         
-        // Construct the full command to pass eventId as a command-line argument
-        const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')} ${eventId}`;
+        // This command first changes the directory using the 'cd' shell command
+        // and then executes the Node.js script. This is an alternative to using the 'cwd' option.
+        const fullRewardCmd = `cd ${game.dir} && ${process.execPath} ${path.join(game.dir, 'reward-top-players.js')} ${eventId}`;
         logger.info(`Executing reward script with command: ${fullRewardCmd}`);
         
-        // Execute the reward command in the game's directory
         const { stdout, stderr } = await execPromise(fullRewardCmd, { 
-            env: { ...process.env }, // We no longer need to pass ONTON_EVENT_UUID here
-            cwd: game.dir
+            env: { ...process.env },
         });
         
         logger.info(`Reward script for ${game.name} finished.`);
-
-        // Check if stdout is too long to send as a single message
-        if (stdout.length > MAX_MESSAGE_LENGTH) {
-            // Send the long output as a text file
-            const fileBuffer = Buffer.from(stdout, 'utf8');
-            await bot.sendDocument(
-                process.env.ADMIN_GROUP_ID,
-                fileBuffer,
-                { caption: `🎉 **Complete Event Results for ${game.name}**\n\nDue to the length of the content, the results have been sent as a text file.`, parse_mode: 'Markdown' },
-                { filename: `event_results_${eventId}.txt` }
-            );
-        } else {
-            // Send the short output as a regular message
-            await bot.sendMessage(
-                process.env.ADMIN_GROUP_ID, 
-                `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout}\n\`\`\``, 
-                { parse_mode: 'Markdown' }
-            );
-        }
         
+        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\nThe reward process is complete, and messages have been sent to all participants.`, { parse_mode: 'Markdown' });
+
         // Reset the ONTON_EVENT_UUID and END_TIME in the .env file
         const newEnvContent = envContent.replace(
             /(#?\s*ONTON_EVENT_UUID=.*)|(#?\s*END_TIME=.*)/g,
