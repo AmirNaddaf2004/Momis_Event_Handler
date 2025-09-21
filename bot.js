@@ -19,6 +19,8 @@ const REQUIRED_CHANNEL_ID = process.env.REQUIRED_CHANNEL_ID || '@MOMIS_studio';
 const bot = new TelegramBot(token, { polling: true });
 
 let userStates = {};
+// Store references to all scheduled jobs so we can manage them later
+let scheduledJobs = {};
 
 const GAME_INFO = {
     'Color Memory': {
@@ -77,19 +79,24 @@ async function scheduleEvent(userId, game, startDateTimeUTC, duration, eventId) 
     const [count, unit] = duration.split(' ');
     const endTime = moment.utc(startDateTimeUTC).add(parseInt(count), unit).toDate();
 
-    // Schedule storeEvent
-    schedule.scheduleJob(startTime, async () => {
+    // Schedule storeEvent and save the job reference
+    const startJob = schedule.scheduleJob(startTime, async () => {
         logger.info(`[Scheduler] Starting event for ${game} at ${startTime.toISOString()} UTC`);
         await storeEvent(game, eventId);
         await bot.sendMessage(userId, `✅ **Event Started!**\n\n*Game:* ${game}\n*Event ID:* \`${eventId}\``, { parse_mode: 'Markdown' });
     });
 
-    // Schedule processEvent
-    schedule.scheduleJob(endTime, async () => {
+    // Schedule processEvent and save the job reference
+    const endJob = schedule.scheduleJob(endTime, async () => {
         logger.info(`[Scheduler] Closing event for ${game} at ${endTime.toISOString()} UTC`);
         await processEvent(bot, game);
         await bot.sendMessage(userId, `🏁 **Event Ended!**\n\n*Game:* ${game}\n*Event ID:* \`${eventId}\``, { parse_mode: 'Markdown' });
+        // Clean up the job reference after the job is finished
+        delete scheduledJobs[eventId];
     });
+
+    // Save the job references in our in-memory store
+    scheduledJobs[eventId] = { start: startJob, end: endJob, game: game, startDateTime: startDateTimeUTC, duration: duration };
 
     logger.info(`Event scheduled for ${game} from ${startTime.toISOString()} to ${endTime.toISOString()}`);
 }
@@ -125,6 +132,30 @@ function startListening() {
 
         const statusMessage = await getStatusMessage();
         await bot.sendMessage(userId, statusMessage, { parse_mode: 'Markdown' });
+    });
+
+    // New command to list all scheduled events
+    bot.onText(/^\/schedules$/, async (msg) => {
+        const userId = msg.from.id;
+        if (!await isUserAdmin(userId)) return;
+
+        const eventIds = Object.keys(scheduledJobs);
+        if (eventIds.length === 0) {
+            return bot.sendMessage(userId, "There are no active scheduled events.");
+        }
+
+        const keyboard = eventIds.map(eventId => {
+            const jobInfo = scheduledJobs[eventId];
+            const gameName = GAME_INFO[jobInfo.game].name;
+            return [{ text: `${gameName} - ID: ${eventId}`, callback_data: `manage_schedule_${eventId}` }];
+        });
+        
+        await bot.sendMessage(userId, "📋 **Active Scheduled Events:**\n\nPlease select an event to manage:", {
+            parse_mode: 'Markdown',
+            reply_markup: {
+                inline_keyboard: keyboard
+            }
+        });
     });
 
     async function getStatusMessage() {
@@ -192,6 +223,33 @@ function startListening() {
             await bot.sendMessage(userId, `✅ You have closed **${gameToClose}**!`, { parse_mode: 'Markdown' });
             userStates[userId] = {};
             await bot.sendMessage(userId, await getStatusMessage(), { parse_mode: 'Markdown' });
+        } else if (callbackData.startsWith('manage_schedule_')) {
+            const eventId = callbackData.substring(16);
+            const jobInfo = scheduledJobs[eventId];
+            if (!jobInfo) {
+                 return await bot.sendMessage(userId, "❌ The selected schedule was not found or has already finished.");
+            }
+            const message = `Manage **${jobInfo.game}** Event\n*ID:* \`${eventId}\`\n*Start Time:* \`${jobInfo.startDateTime}\`\n*Duration:* ${jobInfo.duration}`;
+            const keyboard = [
+                [{ text: '❌ Delete Schedule', callback_data: `delete_schedule_${eventId}` }],
+                [{ text: '◀️ Back to Schedules', callback_data: 'back_to_schedules' }]
+            ];
+            await bot.sendMessage(userId, message, {
+                parse_mode: 'Markdown',
+                reply_markup: { inline_keyboard: keyboard }
+            });
+        } else if (callbackData.startsWith('delete_schedule_')) {
+            const eventId = callbackData.substring(16);
+            const jobInfo = scheduledJobs[eventId];
+            if (jobInfo) {
+                // Cancel the start and end jobs
+                jobInfo.start.cancel();
+                jobInfo.end.cancel();
+                delete scheduledJobs[eventId];
+                await bot.sendMessage(userId, `🗑️ Schedule for **${jobInfo.game}** (ID: \`${eventId}\`) has been deleted.`, { parse_mode: 'Markdown' });
+            } else {
+                await bot.sendMessage(userId, `❌ The schedule with ID \`${eventId}\` was not found.`, { parse_mode: 'Markdown' });
+            }
         } else if (callbackData === 'confirm_schedule') {
             const { selectedGame, startDateTime, duration, eventId } = state;
             if (selectedGame && startDateTime && duration && eventId) {
@@ -213,6 +271,26 @@ function startListening() {
                         [{ text: GAME_INFO['Math Battle'].name, callback_data: 'select_Math Battle' }],
                         [{ text: "▶️ Close an Event", callback_data: 'show_close_options' }],
                     ]
+                }
+            });
+        } else if (callbackData === 'back_to_schedules') {
+            userStates[userId] = {};
+            // Re-run the /schedules command logic to display the list again
+            const eventIds = Object.keys(scheduledJobs);
+            if (eventIds.length === 0) {
+                return bot.sendMessage(userId, "There are no active scheduled events.");
+            }
+    
+            const keyboard = eventIds.map(eventId => {
+                const jobInfo = scheduledJobs[eventId];
+                const gameName = GAME_INFO[jobInfo.game].name;
+                return [{ text: `${gameName} - ID: ${eventId}`, callback_data: `manage_schedule_${eventId}` }];
+            });
+            
+            await bot.sendMessage(userId, "📋 **Active Scheduled Events:**\n\nPlease select an event to manage:", {
+                parse_mode: 'Markdown',
+                reply_markup: {
+                    inline_keyboard: keyboard
                 }
             });
         }
