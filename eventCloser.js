@@ -7,6 +7,10 @@ const util = require('util');
 const execPromise = util.promisify(exec);
 const logger = require('./logger');
 
+const Buffer = require('buffer').Buffer;
+
+const MAX_MESSAGE_LENGTH = 4000; // Telegram limit for regular message
+
 const gameInfo = {
     'Color Memory': {
         name: "Color Memory",
@@ -63,8 +67,6 @@ async function processEvent(bot, gameKey) {
         
         logger.info(`Reward script for ${game.name} finished.`);
         
-        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\nThe reward process is complete, and messages have been sent to all participants.`, { parse_mode: 'Markdown' });
-
         // Reset the ONTON_EVENT_UUID and END_TIME in the .env file
         const newEnvContent = envContent.replace(
             /(#?\s*ONTON_EVENT_UUID=.*)|(#?\s*END_TIME=.*)/g,
@@ -77,6 +79,25 @@ async function processEvent(bot, gameKey) {
         logger.info(`Restarting PM2 process for ${game.name}...`);
         await execPromise(game.restartCmd);
         logger.info(`PM2 process for ${game.name} restarted successfully.`);
+
+        // Check if stdout is too long to send as a single message
+        if (stdout.length > MAX_MESSAGE_LENGTH) {
+            // Send the long output as a text file
+            const fileBuffer = Buffer.from(stdout, 'utf8');
+            await bot.sendDocument(
+                process.env.ADMIN_GROUP_ID,
+                fileBuffer,
+                { caption: `🎉 **Complete Event Results for ${game.name}**\n\nDue to the length of the content, the results have been sent as a text file.`, parse_mode: 'Markdown' },
+                { filename: `event_results_${eventId}.txt` }
+            );
+        } else {
+            // Send the short output as a regular message
+            await bot.sendMessage(
+                process.env.ADMIN_GROUP_ID, 
+                `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout}\n\`\`\``, 
+                { parse_mode: 'Markdown' }
+            );
+        }
 
     } catch (error) {
         logger.error(`Error processing event for ${game.name}:`, error);
