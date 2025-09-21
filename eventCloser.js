@@ -66,7 +66,7 @@ async function processEvent(bot, gameKey) {
         logger.info(`Reward script for ${game.name} finished.`);
 
         // Send the output to the Telegram group
-        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout.substring(0, 4000)}\n\`\`\``, { parse_mode: 'Markdown' });
+        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout}\n\`\`\``, { parse_mode: 'Markdown' });
         
         // Reset the ONTON_EVENT_UUID and END_TIME in the .env file
         const newEnvContent = envContent.replace(
