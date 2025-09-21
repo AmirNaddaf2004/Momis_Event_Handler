@@ -53,21 +53,28 @@ async function processEvent(bot, gameKey) {
         }
 
         // Change the working directory to the game's backend folder
+        // This is a backup method, the main fix is using absolute path below
         process.chdir(game.dir);
-        logger.info(`Executing reward script for ${game.name}...`);
+        
+        // Construct the full, absolute command path for more reliability
+        const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')}`;
+        logger.info(`Executing reward script with command: ${fullRewardCmd}`);
         
         // Execute the reward command and capture the output
-        const { stdout, stderr } = await execPromise(game.rewardCmd, { env: { ...process.env, ONTON_EVENT_UUID: eventId } });
+        const { stdout, stderr } = await execPromise(fullRewardCmd, { env: { ...process.env, ONTON_EVENT_UUID: eventId } });
         
         logger.info(`Reward script for ${game.name} finished.`);
 
         // Send the output to the Telegram group
         await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout.substring(0, 4000)}\n\`\`\``, { parse_mode: 'Markdown' });
         
-        // Reset the ONTON_EVENT_UUID in the .env file
-        const newEnvContent = envContent.replace(/ONTON_EVENT_UUID="[^"]*"/, 'ONTON_EVENT_UUID=""');
-        await fs.writeFile(game.envFile, newEnvContent, 'utf8');
-        logger.info(`ONTON_EVENT_UUID for ${game.name} has been reset.`);
+        // Reset the ONTON_EVENT_UUID and END_TIME in the .env file
+        const newEnvContent = envContent.replace(
+            /(#?\s*ONTON_EVENT_UUID=.*)|(#?\s*END_TIME=.*)/g,
+            ''
+        );
+        await fs.writeFile(game.envFile, newEnvContent.trim() + '\n', 'utf8');
+        logger.info(`ONTON_EVENT_UUID and END_TIME for ${game.name} have been reset.`);
 
         // Restart the PM2 process
         logger.info(`Restarting PM2 process for ${game.name}...`);
