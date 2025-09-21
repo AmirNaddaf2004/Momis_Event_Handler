@@ -55,13 +55,13 @@ async function processEvent(bot, gameKey) {
             return;
         }
         
-        // Construct the full, absolute command path for more reliability
-        const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')}`;
+        // Construct the full command to pass eventId as a command-line argument
+        const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')} ${eventId}`;
         logger.info(`Executing reward script with command: ${fullRewardCmd}`);
         
         // Execute the reward command in the game's directory
         const { stdout, stderr } = await execPromise(fullRewardCmd, { 
-            env: { ...process.env, ONTON_EVENT_UUID: eventId },
+            env: { ...process.env }, // We no longer need to pass ONTON_EVENT_UUID here
             cwd: game.dir
         });
         
