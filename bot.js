@@ -46,53 +46,6 @@ async function isUserAdmin(userId) {
     }
 }
 
-// این تابع بدون تغییر باقی می‌ماند
-async function sendWinnerMessage(telegramId, userName, score, rewardLink) {
-    const message = `🏆 *Congratulations, ${userName}!* 🏆
-
-You were a top player in the last tournament!
-
-*Your final score:* *${score}*
-
-You have earned a special reward. Click the button below to claim your prize.`;
-    const options = {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [[{ text: "🎁 Claim Your Reward", url: rewardLink }]]
-        }
-    };
-    try {
-        await bot.sendMessage(telegramId, message, options);
-        logger.info(`Winner message sent to user ${telegramId}`);
-    } catch (error) {
-        logger.error(`Failed to send winner message to ${telegramId}. Reason: ${error.message}`);
-    }
-}
-
-// این تابع بدون تغییر باقی می‌ماند
-async function sendConsolationMessage(telegramId, userName, topScore) {
-    const message = `👋 Hello, *${userName}*!
-
-Thank you for participating in our latest tournament.
-
-*Your highest score:* *${topScore}*
-
-The tournament has now ended. Keep practicing for the next event!`;
-    const options = {
-        parse_mode: 'Markdown',
-        reply_markup: {
-            inline_keyboard: [[{ text: "🚀 Practice in Free Mode!", web_app: { url: WEB_APP_URL } }]]
-        }
-    };
-    try {
-        await bot.sendMessage(telegramId, message, options);
-        logger.info(`Consolation message sent to user ${telegramId}`);
-    } catch (error) {
-        logger.error(`Failed to send consolation message to ${telegramId}. Reason: ${error.message}`);
-    }
-}
-
-
 async function getActiveGames() {
     const activeGames = [];
     for (const [key, value] of Object.entries(GAME_INFO)) {

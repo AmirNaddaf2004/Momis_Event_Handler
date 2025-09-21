@@ -38,6 +38,9 @@ async function processEvent(bot, gameKey) {
         return;
     }
 
+    // Save the original working directory
+    const originalDir = process.cwd();
+
     try {
         const envContent = await fs.readFile(game.envFile, 'utf8');
         const match = envContent.match(/ONTON_EVENT_UUID="([^"]+)"/);
@@ -49,15 +52,14 @@ async function processEvent(bot, gameKey) {
             return;
         }
 
-        const currentDir = process.cwd();
+        // Change the working directory to the game's backend folder
         process.chdir(game.dir);
         logger.info(`Executing reward script for ${game.name}...`);
         
         // Execute the reward command and capture the output
         const { stdout, stderr } = await execPromise(game.rewardCmd, { env: { ...process.env, ONTON_EVENT_UUID: eventId } });
         
-        process.chdir(currentDir);
-        logger.info(`Reward script for ${game.name} finished. `);
+        logger.info(`Reward script for ${game.name} finished.`);
 
         // Send the output to the Telegram group
         await bot.sendMessage(process.env.ADMIN_GROUP_ID, `🎉 **Event Results for ${game.name}**\n\n\`\`\`\n${stdout.substring(0, 4000)}\n\`\`\``, { parse_mode: 'Markdown' });
@@ -76,11 +78,10 @@ async function processEvent(bot, gameKey) {
         logger.error(`Error processing event for ${game.name}: ${error.message}`);
         await bot.sendMessage(process.env.ADMIN_GROUP_ID, `❌ **Error Closing Event:**\n\nAn error occurred while closing the event for **${game.name}**. Please check the server logs.\n\n\`\`\`\n${error.message}\n\`\`\``, { parse_mode: 'Markdown' });
         
-        // Return to the original directory in case of an error
-        const currentDir = process.cwd();
-        if (currentDir !== path.join(__dirname, '../..')) {
-            process.chdir(path.join(__dirname, '../..'));
-        }
+    } finally {
+        // Always return to the original directory, even if an error occurred
+        process.chdir(originalDir);
+        logger.info(`Returned to original directory: ${originalDir}`);
     }
 }
 
