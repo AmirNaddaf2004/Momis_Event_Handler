@@ -13,6 +13,8 @@ async function cancelAllSchedules() {
     logger.info('All scheduled jobs have been successfully cancelled.');
 }
 
+cancelAllSchedules;
+
 module.exports = {
     cancelAllSchedules,
 };
