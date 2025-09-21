@@ -76,7 +76,13 @@ async function processEvent(bot, gameKey) {
 
     } catch (error) {
         logger.error(`Error processing event for ${game.name}: ${error.message}`);
-        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `❌ **Error Closing Event:**\n\nAn error occurred while closing the event for **${game.name}**. Please check the server logs.\n\n\`\`\`\n${error.message}\n\`\`\``, { parse_mode: 'Markdown' });
+        
+        // Log the stderr from the failed command to get the real error reason
+        if (error.stderr) {
+            logger.error(`stderr from failed command: ${error.stderr}`);
+        }
+
+        await bot.sendMessage(process.env.ADMIN_GROUP_ID, `❌ **Error Closing Event:**\n\nAn error occurred while closing the event for **${game.name}**. Please check the server logs.\n\n\`\`\`\n${error.message}\n\`\`\`\n\n**stderr:**\n\`\`\`\n${error.stderr ? error.stderr.substring(0, 1000) : 'No stderr available'}\n\`\`\``, { parse_mode: 'Markdown' });
         
     } finally {
         // Always return to the original directory, even if an error occurred
