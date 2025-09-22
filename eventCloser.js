@@ -56,13 +56,18 @@ async function processEvent(bot, gameKey) {
             return;
         }
         
-        // This command first changes the directory using the 'cd' shell command
-        // and then executes the Node.js script. This is an alternative to using the 'cwd' option.
-        const fullRewardCmd = `cd ${game.dir} && ${process.execPath} ${path.join(game.dir, 'reward-top-players.js')} ${eventId}`;
+        // **تغییر اصلی:** دستور اجرای اسکریپت را به این صورت اصلاح می‌کنیم:
+        // 1. از dotenv/config با یک مسیر سفارشی استفاده می‌کنیم.
+        // 2. متغیر محیطی DOTENV_CONFIG_PATH را به فرآیند فرزند ارسال می‌کنیم.
+        const fullRewardCmd = `${process.execPath} ${path.join(game.dir, 'reward-top-players.js')} ${eventId}`;
         logger.info(`Executing reward script with command: ${fullRewardCmd}`);
         
         const { stdout, stderr } = await execPromise(fullRewardCmd, { 
-            env: { ...process.env },
+            cwd: game.dir, // اینجا دایرکتوری کاری را مشخص می کنیم
+            env: { 
+                ...process.env, // متغیرهای محیطی والد را حفظ می‌کنیم.
+                DOTENV_CONFIG_PATH: game.envFile, // مسیر فایل .env مورد نظر را برای فرآیند فرزند مشخص می‌کنیم.
+            },
         });
         
         logger.info(`Reward script for ${game.name} finished.`);
