@@ -3,7 +3,7 @@ require('dotenv').config({ quiet: true });
 const TelegramBot = require('node-telegram-bot-api');
 const logger = require('./logger');
 const schedule = require('node-schedule');
-const { storeEvent } = require('./eventRunner');
+const { storeEvent, setStartTime } = require('./eventRunner');
 const { processEvent } = require('./eventCloser');
 const fs = require('fs/promises');
 const path = require('path');
@@ -78,6 +78,7 @@ async function scheduleEvent(userId, game, startDateTimeUTC, duration, eventId) 
     const startTime = moment.utc(startDateTimeUTC).toDate();
     const [count, unit] = duration.split(' ');
     const endTime = moment.utc(startDateTimeUTC).add(parseInt(count), unit).toDate();
+    setStartTime(game, startTime);
 
     // Schedule storeEvent and save the job reference
     const startJob = schedule.scheduleJob(startTime, async () => {
