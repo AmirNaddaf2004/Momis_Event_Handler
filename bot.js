@@ -3,7 +3,7 @@ require('dotenv').config({ quiet: true });
 const TelegramBot = require('node-telegram-bot-api');
 const logger = require('./logger');
 const schedule = require('node-schedule');
-const { storeEvent, setStartTime } = require('./eventRunner');
+const { storeEvent, setStartTime, deleteStartTime } = require('./eventRunner');
 const { processEvent } = require('./eventCloser');
 const fs = require('fs/promises');
 const path = require('path');
@@ -247,6 +247,7 @@ function startListening() {
                 jobInfo.start.cancel();
                 jobInfo.end.cancel();
                 delete scheduledJobs[eventId];
+                deleteStartTime(jobInfo.game);
                 await bot.sendMessage(userId, `🗑️ Schedule for **${jobInfo.game}** (ID: \`${eventId}\`) has been deleted.`, { parse_mode: 'Markdown' });
             } else {
                 await bot.sendMessage(userId, `❌ The schedule with ID \`${eventId}\` was not found.`, { parse_mode: 'Markdown' });
